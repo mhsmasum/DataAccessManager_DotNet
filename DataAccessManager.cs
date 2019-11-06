@@ -11,11 +11,11 @@ namespace WebApplication1.DataManager
     {
         private SqlConnection _sqlConnection = null;
         private SqlCommand _sqlCommand = null;
-        private SqlDataReade _sqlDataReader = null;
+        private SqlDataReader _sqlDataReader = null;
         private SqlTransaction _sqlTransaction = null;
         private SqlDataAdapter _sqlDataAdapter = null;
-        private const int _commandTimeOut = 180000; // (3 min *60000)=  milliseconds 
-        private bool _isException;
+        private const int _commandTimeout = 180000; // (3 min *60000)=  milliseconds 
+        private bool hasException;
         private bool returnValue = true;
         private string ConnectionString(string database)
         {
@@ -25,50 +25,6 @@ namespace WebApplication1.DataManager
         }
         //MultipleActiveResultSets=true;
 
-
-
-    public SqlDataReader GetSqlDataReader(string StoreProcedure, List<SqlParameter> SqlParameterList, bool IsBigData = false)
-        {
-            try
-            {
-                _sqlCommand = new SqlCommand
-                {
-                    Connection = _sqlConnection,
-                    CommandType = CommandType.StoredProcedure,
-                    CommandText = StoreProcedure,
-                    Transaction = _sqlTransaction
-                };
-
-                _sqlCommand.Parameters.Clear();
-                _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
-                if (IsBigData)
-                {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
-                }
-
-
-
-               _sqlDataReader = _sqlCommand.ExecuteReader();
-                _sqlCommand.Parameters.Clear();
-            }
-            catch (SqlException sqlException)
-            {
-                _isException = true;
-               _sqlDataReader = null;
-                throw sqlException;
-            }
-            finally
-            {
-                _sqlCommand.Parameters.Clear();
-                _sqlCommand.Dispose();
-                if (_isException)
-                {
-                    SqlConnectionClose(true);
-                }
-
-            }
-            retur _sqlDataReader;
-        }
         public bool CheckIfConnectionExits(string database)
         {
             bool conne = true;
@@ -84,7 +40,7 @@ namespace WebApplication1.DataManager
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 throw sqlException;
             }
 
@@ -107,12 +63,12 @@ namespace WebApplication1.DataManager
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 throw sqlException;
             }
             finally
             {
-                if (_isException)
+                if (hasException)
                 {
                     returnValue = false;
                 }
@@ -136,12 +92,12 @@ namespace WebApplication1.DataManager
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 throw sqlException;
             }
             finally
             {
-                if (_isException)
+                if (hasException)
                 {
                     returnValue = false;
                 }
@@ -149,7 +105,6 @@ namespace WebApplication1.DataManager
             }
             return returnValue;
         }
-
         public bool SqlConnectionClose(bool IsRollBack = false)
         {
             try
@@ -160,7 +115,7 @@ namespace WebApplication1.DataManager
                     {
                         if (_sqlDataReader != null)
                         {
-                           _sqlDataReader.Close();
+                            _sqlDataReader.Close();
 
                         }
                         if (IsRollBack)
@@ -180,12 +135,12 @@ namespace WebApplication1.DataManager
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 throw sqlException;
             }
             finally
             {
-                if (_isException)
+                if (hasException)
                 {
                     returnValue = false;
                 }
@@ -208,12 +163,12 @@ namespace WebApplication1.DataManager
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 throw sqlException;
             }
             finally
             {
-                if (_isException)
+                if (hasException)
                 {
                     returnValue = false;
                 }
@@ -235,28 +190,69 @@ namespace WebApplication1.DataManager
                 };
                 if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
 
-               _sqlDataReader = _sqlCommand.ExecuteReader();
+                _sqlDataReader = _sqlCommand.ExecuteReader();
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
-               _sqlDataReader = null;
+                hasException = true;
+                _sqlDataReader = null;
                 throw sqlException;
             }
             finally
             {
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionClose(true);
                 }
 
             }
-            retur _sqlDataReader;
+            return _sqlDataReader;
         }
-       
+        public SqlDataReader GetSqlDataReader(string StoreProcedure, List<SqlParameter> SqlParameterList, bool IsBigData = false)
+        {
+            try
+            {
+                _sqlCommand = new SqlCommand
+                {
+                    Connection = _sqlConnection,
+                    CommandType = CommandType.StoredProcedure,
+                    CommandText = StoreProcedure,
+                    Transaction = _sqlTransaction
+                };
+
+                _sqlCommand.Parameters.Clear();
+                _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
+                if (IsBigData)
+                {
+                    _sqlCommand.CommandTimeout = _commandTimeout;
+                }
+
+
+
+                _sqlDataReader = _sqlCommand.ExecuteReader();
+                _sqlCommand.Parameters.Clear();
+            }
+            catch (SqlException sqlException)
+            {
+                hasException = true;
+                _sqlDataReader = null;
+                throw sqlException;
+            }
+            finally
+            {
+                _sqlCommand.Parameters.Clear();
+                _sqlCommand.Dispose();
+                if (hasException)
+                {
+                    SqlConnectionClose(true);
+                }
+
+            }
+            return _sqlDataReader;
+        }
         public DataTable GetDataTable(string StoreProcedure, bool IsBigData = false)
         {
             DataTable dt = new DataTable();
@@ -274,21 +270,21 @@ namespace WebApplication1.DataManager
 
                 if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
-                sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
-                sqlDataAdapter.Fill(ds);
+                _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+                _sqlDataAdapter.Fill(ds);
                 dt = ds.Tables[0];
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 dt = null;
                 throw sqlException;
             }
             finally
             {
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionClose(true);
                 }
@@ -313,25 +309,25 @@ namespace WebApplication1.DataManager
 
                 _sqlCommand.Parameters.Clear();
                 _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
-                if (IsBigData==true)
+                if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
-                sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
-                sqlDataAdapter.Fill(ds);
+                _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+                _sqlDataAdapter.Fill(ds);
                 dt = ds.Tables[0];
 
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 dt = null;
                 throw sqlException;
             }
             finally
             {
                 _sqlCommand.Parameters.Clear();
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionClose(true);
                 }
@@ -359,24 +355,24 @@ namespace WebApplication1.DataManager
         //        _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
         //        if (IsBigData)
         //        {
-        //            _sqlCommand._commandTimeOut = _commandTimeOut;
+        //            _sqlCommand.CommandTimeout = CommandTimeout;
         //        }
-        //        sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
-        //        //sqlDataAdapter.Fill(ds);
-        //        await Task.Run(() => sqlDataAdapter.Fill(ds));
+        //        _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+        //        //_sqlDataAdapter.Fill(ds);
+        //        await Task.Run(() => _sqlDataAdapter.Fill(ds));
         //        dt = ds.Tables[0];
 
         //    }
         //    catch (SqlException sqlException)
         //    {
-        //        _isException = true;
+        //        hasException = true;
         //        dt = null;
         //        throw sqlException;
         //    }
         //    finally
         //    {
         //        _sqlCommand.Parameters.Clear();
-        //        if (_isException)
+        //        if (hasException)
         //        {
         //            SqlConnectionClose(true);
         //        }
@@ -403,26 +399,26 @@ namespace WebApplication1.DataManager
 
                 _sqlCommand.Parameters.Clear();
                 _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
-                if (IsBigData ==true)
+                if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
-                sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
-                sqlDataAdapter.Fill(ds);
+                _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+                _sqlDataAdapter.Fill(ds);
 
                 dt = ds.Tables[0];
 
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 dt = null;
                 throw sqlException;
             }
             finally
             {
                 _sqlCommand.Parameters.Clear();
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionCloseAsync();
                 }
@@ -445,20 +441,20 @@ namespace WebApplication1.DataManager
 
                 if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
-                sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
-                sqlDataAdapter.Fill(ds);
+                _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+                _sqlDataAdapter.Fill(ds);
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 ds = null;
                 throw sqlException;
             }
             finally
             {
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionClose(true);
                 }
@@ -482,24 +478,24 @@ namespace WebApplication1.DataManager
 
                 _sqlCommand.Parameters.Clear();
                 _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
-                if (IsBigData==true)
+                if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
-                sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
-                sqlDataAdapter.Fill(ds);
+                _sqlDataAdapter = new SqlDataAdapter(_sqlCommand);
+                _sqlDataAdapter.Fill(ds);
 
             }
             catch (SqlException sqlException)
             {
-                _isException = true;
+                hasException = true;
                 ds = null;
                 throw sqlException;
             }
             finally
             {
                 _sqlCommand.Parameters.Clear();
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionClose(true);
                 }
@@ -523,7 +519,7 @@ namespace WebApplication1.DataManager
                 _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
                 if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
                 primaryKey = Convert.ToInt32(_sqlCommand.ExecuteScalar());
 
@@ -531,13 +527,13 @@ namespace WebApplication1.DataManager
             catch (SqlException sqlException)
             {
                 returnValue = false;
-                _isException = true;
+                hasException = true;
                 throw sqlException;
             }
             finally
             {
                 _sqlCommand.Parameters.Clear();
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionClose(true);
                 }
@@ -545,7 +541,7 @@ namespace WebApplication1.DataManager
             return primaryKey;
         }
         /// <summary>
-        /// Save Data And Return Primary Key Of Inserted Data
+        /// After Saving Data Only Identity Value will be Returned
         /// </summary>
         /// <param name="StoreProcedure"></param>
         /// <param name="SqlParameterList"></param>
@@ -576,22 +572,22 @@ namespace WebApplication1.DataManager
                 };
                 _sqlCommand.Parameters.Clear();
                 _sqlCommand.Parameters.AddRange(SqlParameterList.ToArray());
-                if (IsBigData == true)
+                if (IsBigData)
                 {
-                    _sqlCommand._commandTimeOut = _commandTimeOut;
+                    _sqlCommand.CommandTimeout = _commandTimeout;
                 }
                 _sqlCommand.ExecuteNonQuery();
             }
             catch (SqlException sqlException)
             {
                 returnValue = false;
-                _isException = true;
+                hasException = true;
                 throw sqlException;
             }
             finally
             {
                 _sqlCommand.Parameters.Clear();
-                if (_isException)
+                if (hasException)
                 {
                     SqlConnectionClose(true);
                 }
